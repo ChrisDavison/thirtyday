@@ -2,6 +2,26 @@ use chrono::{Datelike, Utc, Weekday};
 
 static USAGE: &'static str = "usage: thirtyday [-d DAYS] MESSAGE...";
 
+static USAGE_LONG: &'static str = r#"thirtyday - generate a 'checkbox' for a 30-day challenge
+
+usage: thirtyday [-d DAYS] MESSAGE...
+
+This will start from the current day and generate a checkbox for the next
+30 days, with the initial weekday letter, e.g.:
+
+    [WTFSS MTWTFSS MTWTFSS MTWTFSS MTWT]
+
+You can copy this template into a plaintext file for keeping a log on your
+challenge, replacing each day's letter with an '.' or 'x' to represent fail
+or success (or use whatever symbols you like). At the end of the month, you
+can see something like...
+
+    [xxxxx xxxx..x xx.x..x xxxx.xx xxxx]
+
+...and add in any notes, such as 'sick in week 2'.
+"#;
+
+
 fn weekday_letter(w: Weekday) -> char {
     match w {
         Weekday::Mon => 'M',
@@ -26,7 +46,13 @@ fn parse_args() -> Result<(String, u8), Box<dyn ::std::error::Error>> {
     let mut shift_state = DigitParsing::NoDigit;
     let mut shift = 0;
     for arg in std::env::args().skip(1) {
-        if arg == "-d" {
+        if arg == "-h" {
+            println!("{}", USAGE);
+            std::process::exit(0);
+        } else if arg == "--help" {
+            println!("{}", USAGE_LONG);
+            std::process::exit(0);
+        } else if arg == "-d" {
             shift_state = DigitParsing::WaitingForDigit;
             continue;
         } else if shift_state == DigitParsing::WaitingForDigit {
