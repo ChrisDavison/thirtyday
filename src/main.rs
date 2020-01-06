@@ -1,10 +1,15 @@
-use chrono::{Datelike, Utc, Weekday};
+use chrono::{Datelike, Duration, Utc, Weekday};
+use std::ops::Add;
 
-static USAGE: &'static str = "usage: thirtyday [-d DAYS] MESSAGE...";
+static USAGE: &'static str = "usage: thirtyday [-s DAYS] MESSAGE...";
 
 static USAGE_LONG: &'static str = r#"thirtyday - generate a 'checkbox' for a 30-day challenge
 
-usage: thirtyday [-d DAYS] MESSAGE...
+usage: thirtyday [-s DAYS] MESSAGE...
+
+Options:
+    -s DAYS    Shift the start by DAYS days
+    -d         Prefix message with the start and end date
 
 This will start from the current day and generate a checkbox for the next
 30 days, with the initial weekday letter, e.g.:
@@ -20,7 +25,6 @@ can see something like...
 
 ...and add in any notes, such as 'sick in week 2'.
 "#;
-
 
 fn weekday_letter(w: Weekday) -> char {
     match w {
@@ -45,6 +49,7 @@ fn parse_args() -> Result<(String, u8), Box<dyn ::std::error::Error>> {
     let mut args = Vec::new();
     let mut shift_state = DigitParsing::NoDigit;
     let mut shift = 0;
+    let mut with_date = false;
     for arg in std::env::args().skip(1) {
         if arg == "-h" {
             println!("{}", USAGE);
@@ -53,6 +58,8 @@ fn parse_args() -> Result<(String, u8), Box<dyn ::std::error::Error>> {
             println!("{}", USAGE_LONG);
             std::process::exit(0);
         } else if arg == "-d" {
+            with_date = true
+        } else if arg == "-s" {
             shift_state = DigitParsing::WaitingForDigit;
             continue;
         } else if shift_state == DigitParsing::WaitingForDigit {
@@ -65,7 +72,23 @@ fn parse_args() -> Result<(String, u8), Box<dyn ::std::error::Error>> {
     if shift_state == DigitParsing::WaitingForDigit {
         Err("Flag -d requires a digit afterwards, for number of days to shift".into())
     } else {
-        Ok((args.join(" "), shift))
+        let message = if with_date {
+            let date_start = Utc::now().add(Duration::days(shift));
+            let date_end = date_start.add(Duration::days(30));
+            let dates = format!(
+                "{} to {}",
+                date_start.format("%Y-%m-%d"),
+                date_end.format("%Y-%m-%d")
+            );
+            if args.is_empty() {
+                dates
+            } else {
+                format!("{} -- {}", dates, args.join(" "))
+            }
+        } else {
+            args.join(" ")
+        };
+        Ok((message, shift as u8))
     }
 }
 
